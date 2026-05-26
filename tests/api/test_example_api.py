@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import allure
 import pytest
-
 from framework.api.example_client import JsonPlaceholderClient
 
 

@@ -37,13 +37,9 @@ class AuthClient:
         self.cache = cache or TokenCache()
         self.log = get_logger(self.__class__.__name__)
 
-    def authenticate(
-        self, username: str, password: str, otp_secret: str | None = None
-    ) -> Token:
+    def authenticate(self, username: str, password: str, otp_secret: str | None = None) -> Token:
         """Return a Token, using the cache when valid and OTP retries when required."""
-        return self.cache.get_or_fetch(
-            lambda: self._fetch_token(username, password, otp_secret)
-        )
+        return self.cache.get_or_fetch(lambda: self._fetch_token(username, password, otp_secret))
 
     def logout(self, token: Token, logout_url: str | None = None) -> None:
         """Best-effort logout. Pass the matching OIDC logout endpoint via `logout_url`."""
@@ -91,8 +87,8 @@ class AuthClient:
 
     def _build_payload(
         self, username: str, password: str, otp_secret: str | None
-    ) -> dict[str, str]:
-        payload = {
+    ) -> dict[str, str | float | bool]:
+        payload: dict[str, str | float | bool] = {
             "username": username,
             "password": password,
             "client_id": self.client_id,

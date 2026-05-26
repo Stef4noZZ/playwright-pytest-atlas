@@ -4,9 +4,8 @@ import re
 
 import allure
 import pytest
-from playwright.sync_api import expect
-
 from framework.pages.example_page import PlaywrightHomePage
+from playwright.sync_api import expect
 
 
 @pytest.mark.ui

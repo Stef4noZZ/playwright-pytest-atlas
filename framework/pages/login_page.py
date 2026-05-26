@@ -8,7 +8,8 @@ from __future__ import annotations
 
 import time
 
-from playwright.sync_api import Locator, TimeoutError as PWTimeout, expect
+from playwright.sync_api import Locator, expect
+from playwright.sync_api import TimeoutError as PWTimeout
 
 from framework.auth.otp import generate_totp
 from framework.pages.base_page import BasePage
@@ -70,7 +71,9 @@ class LoginPage(BasePage):
 
         self.log.info("ui_login_complete")
 
-    def logout(self, avatar_selector: str = '[data-test="avatar"]', menu_text: str = "Logout") -> None:
+    def logout(
+        self, avatar_selector: str = '[data-test="avatar"]', menu_text: str = "Logout"
+    ) -> None:
         """Best-effort UI logout. Override per app."""
         try:
             self.page.locator(avatar_selector).click()

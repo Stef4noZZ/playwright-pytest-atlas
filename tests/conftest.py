@@ -1,15 +1,12 @@
 from __future__ import annotations
 
+import contextlib
 from collections.abc import Generator
 from pathlib import Path
 from typing import Any
 
 import allure
 import pytest
-from playwright.sync_api import Page, Playwright
-
-from playwright.sync_api import APIRequestContext
-
 from config.settings import Settings, get_settings
 from framework.api.auth_client import AuthClient
 from framework.api.example_client import JsonPlaceholderClient
@@ -17,6 +14,7 @@ from framework.auth.token_cache import Token
 from framework.pages.example_page import PlaywrightHomePage
 from framework.pages.login_page import LoginPage
 from framework.utils.logger import configure_logging
+from playwright.sync_api import APIRequestContext, Page, Playwright
 
 
 def pytest_configure(config: pytest.Config) -> None:
@@ -280,7 +278,5 @@ def pytest_runtest_teardown(
     page: Page | None = item.funcargs.get("page")  # type: ignore[assignment]
     if page is None:
         return
-    try:
+    with contextlib.suppress(Exception):
         page.context.clear_cookies()
-    except Exception:
-        pass

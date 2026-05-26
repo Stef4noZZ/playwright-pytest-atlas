@@ -11,9 +11,9 @@ import hashlib
 from typing import Literal
 
 try:
-    import pyotp
+    import pyotp  # type: ignore[import-not-found]
 except ImportError:  # pragma: no cover - optional dep
-    pyotp = None  # type: ignore[assignment]
+    pyotp = None
 
 
 OTPAlgorithm = Literal["SHA1", "SHA256", "SHA512"]
@@ -40,4 +40,5 @@ def generate_totp(secret: str, algorithm: OTPAlgorithm = "SHA512") -> str:
             f"Unsupported OTP algorithm: {algorithm}. Supported: {list(_ALGORITHM_MAP.keys())}"
         )
 
-    return pyotp.TOTP(secret, digest=digest).now()
+    code: str = pyotp.TOTP(secret, digest=digest).now()
+    return code
