@@ -1,0 +1,93 @@
+name: tests
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      markers:
+        description: "Pytest marker expression to run"
+        type: string
+        default: "smoke"
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: ${{ matrix.browser }} / py${{ matrix.python }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    strategy:
+      fail-fast: false
+      matrix:
+        browser: [chromium, firefox, webkit]
+        python: ["3.11"]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+          cache: pip
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[dev]"
+
+      - name: Install Playwright browser
+        run: playwright install --with-deps ${{ matrix.browser }}
+
+      - name: Run tests
+        env:
+          QA_BROWSER: ${{ matrix.browser }}
+          QA_HEADLESS: "true"
+        run: |
+          pytest \
+            -m "${{ github.event.inputs.markers || 'smoke' }}" \
+            --browser=${{ matrix.browser }} \
+            -n auto \
+            --reruns=1 \
+            --reruns-delay=2
+
+      - name: Upload reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: reports-${{ matrix.browser }}-py${{ matrix.python }}
+          path: reports/
+          retention-days: 14
+
+  lint:
+    name: lint & type check
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install dev dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[dev]"
+
+      - name: Ruff lint
+        run: ruff check framework config tests
+
+      - name: Ruff format check
+        run: ruff format --check framework config tests
+
+      - name: Mypy
+        run: mypy framework config

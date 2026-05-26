@@ -1,0 +1,50 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+.Python
+build/
+dist/
+.eggs/
+
+# Virtualenv
+.venv/
+venv/
+env/
+
+# Pytest / Playwright / tooling caches
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.cache/
+playwright-report/
+test-results/
+
+# Coverage
+.coverage
+htmlcov/
+
+# Reports & artifacts (keep folder, ignore contents)
+reports/*
+!reports/.gitkeep
+allure-results/
+allure-report/
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log

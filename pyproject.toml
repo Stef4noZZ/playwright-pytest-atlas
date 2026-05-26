@@ -1,0 +1,110 @@
+[project]
+name = "playwright-pytest-atlas"
+version = "0.1.0"
+description = "Reusable Python Playwright + Pytest QA archetype for UI and API testing."
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "MIT" }
+authors = [{ name = "QA Team" }]
+keywords = ["qa", "testing", "playwright", "pytest", "archetype", "ui", "api"]
+
+dependencies = [
+    "playwright>=1.49.0",
+    "pytest>=8.3.0",
+    "pytest-playwright>=0.6.0",
+    "pytest-xdist>=3.6.0",
+    "pytest-rerunfailures>=15.0",
+    "pytest-html>=4.1.0",
+    "pytest-timeout>=2.3.0",
+    "allure-pytest>=2.13.5",
+    "pydantic>=2.9.0",
+    "pydantic-settings>=2.6.0",
+    "python-dotenv>=1.0.0",
+    "faker>=30.0.0",
+    "tenacity>=9.0.0",
+    "structlog>=24.4.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "ruff>=0.7.0",
+    "mypy>=1.13.0",
+    "pre-commit>=4.0.0",
+]
+auth = [
+    "pyotp>=2.9.0",
+    "pyjwt[crypto]>=2.9.0",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["framework", "config"]
+
+[tool.pytest.ini_options]
+minversion = "8.0"
+testpaths = ["tests"]
+pythonpath = ["."]
+addopts = [
+    "-ra",
+    "--strict-markers",
+    "--strict-config",
+    "--tb=short",
+    "--html=reports/html/report.html",
+    "--self-contained-html",
+    "--alluredir=reports/allure-results",
+    "--clean-alluredir",
+    "--screenshot=only-on-failure",
+    "--video=retain-on-failure",
+    "--tracing=retain-on-failure",
+    "--output=reports/playwright",
+]
+markers = [
+    "smoke: critical-path smoke tests",
+    "regression: full regression suite",
+    "ui: UI tests via Playwright",
+    "api: API tests via APIRequestContext",
+    "e2e: end-to-end flows across UI and API",
+    "slow: tests that take longer than 30 seconds",
+]
+log_cli = true
+log_cli_level = "INFO"
+log_cli_format = "%(asctime)s [%(levelname)s] %(name)s: %(message)s"
+log_cli_date_format = "%Y-%m-%d %H:%M:%S"
+filterwarnings = [
+    "error",
+    "ignore::DeprecationWarning:pkg_resources.*",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+src = ["framework", "config", "tests"]
+
+[tool.ruff.lint]
+select = [
+    "E", "W",     # pycodestyle
+    "F",          # pyflakes
+    "I",          # isort
+    "B",          # flake8-bugbear
+    "UP",         # pyupgrade
+    "SIM",        # flake8-simplify
+    "RUF",        # ruff-specific
+]
+ignore = ["E501"]
+
+[tool.ruff.format]
+quote-style = "double"
+docstring-code-format = true
+
+[tool.mypy]
+python_version = "3.11"
+strict = true
+warn_unused_ignores = true
+plugins = ["pydantic.mypy"]
+
+[[tool.mypy.overrides]]
+module = "tests.*"
+disallow_untyped_decorators = false
