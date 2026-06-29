@@ -436,3 +436,7 @@ Most commonly ruff auto-fixes the issue; just `git add -u && git commit` again.
 ## License
 
 MIT. See [LICENSE](LICENSE).
+
+---
+
+> Dependency modernization and review assisted by Claude (Anthropic Opus 4.8).

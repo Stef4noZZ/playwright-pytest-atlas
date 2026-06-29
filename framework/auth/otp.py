@@ -8,13 +8,8 @@ when no OTP secret is configured.
 from __future__ import annotations
 
 import hashlib
+import importlib.util
 from typing import Literal
-
-try:
-    import pyotp  # type: ignore[import-not-found]
-except ImportError:  # pragma: no cover - optional dep
-    pyotp = None
-
 
 OTPAlgorithm = Literal["SHA1", "SHA256", "SHA512"]
 
@@ -26,13 +21,15 @@ _ALGORITHM_MAP = {
 
 
 def is_otp_available() -> bool:
-    return pyotp is not None
+    return importlib.util.find_spec("pyotp") is not None
 
 
 def generate_totp(secret: str, algorithm: OTPAlgorithm = "SHA512") -> str:
     """Return the current TOTP code for the given base32 secret."""
-    if pyotp is None:
+    if not is_otp_available():
         raise RuntimeError("pyotp is not installed. Install with: pip install -e '.[auth]'")
+
+    import pyotp
 
     digest = _ALGORITHM_MAP.get(algorithm.upper())
     if digest is None:
