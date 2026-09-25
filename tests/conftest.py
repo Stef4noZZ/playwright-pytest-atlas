@@ -13,12 +13,30 @@ from framework.api.example_client import JsonPlaceholderClient
 from framework.auth.token_cache import Token
 from framework.pages.example_page import PlaywrightHomePage
 from framework.pages.login_page import LoginPage
-from framework.utils.logger import configure_logging
+from framework.utils.logger import configure_logging, get_logger
 from playwright.sync_api import APIRequestContext, Page, Playwright
+
+
+def _flag_on_cli(config: pytest.Config, flag: str) -> bool:
+    return any(arg == flag or arg.startswith(f"{flag}=") for arg in config.invocation_params.args)
+
+
+def _apply_playwright_options(config: pytest.Config) -> None:
+    """Apply QA_* settings unless the matching pytest-playwright flag was passed."""
+    settings = get_settings()
+    if not config.getoption("browser"):
+        config.option.browser = [settings.browser]
+    if not _flag_on_cli(config, "--screenshot"):
+        config.option.screenshot = settings.capture_screenshot
+    if not _flag_on_cli(config, "--tracing"):
+        config.option.tracing = settings.record_trace
+    if not _flag_on_cli(config, "--video"):
+        config.option.video = "on" if settings.record_video else "retain-on-failure"
 
 
 def pytest_configure(config: pytest.Config) -> None:
     configure_logging()
+    _apply_playwright_options(config)
 
 
 # ---------------------------------------------------------------------------
@@ -81,9 +99,6 @@ def browser_context_args(
         **browser_context_args,
         "base_url": str(settings.base_url).rstrip("/"),
         "ignore_https_errors": True,
-        "record_video_dir": (
-            str(settings.artifacts_dir / "videos") if settings.record_video else None
-        ),
     }
     if storage_state_path is not None:
         args["storage_state"] = str(storage_state_path)
@@ -164,6 +179,7 @@ def storage_state_path(
             username=settings.username,
             password=settings.password.get_secret_value(),
             otp_secret=settings.otp_secret.get_secret_value() if settings.otp_secret else None,
+            otp_algorithm=settings.otp_algorithm,
         )
         context.storage_state(path=state_file)
     finally:
@@ -206,7 +222,7 @@ def api_token(
         pytest.skip("API auth not configured (set QA_AUTH_TOKEN_URL)")
 
     username, password = credentials
-    token = auth_client.authenticate(username, password, otp_secret)
+    token = auth_client.authenticate(username, password, otp_secret, settings.otp_algorithm)
     yield token
     auth_client.logout(token, logout_url=settings.auth_logout_url)
 
@@ -222,6 +238,7 @@ def ui_login(
     base_url: str,
     credentials: tuple[str, str],
     otp_secret: str | None,
+    settings: Settings,
 ) -> Generator[LoginPage, None, None]:
     """Per-test UI login. Use this when you need a fresh login flow rather
     than the session-wide `storage_state`.
@@ -229,7 +246,12 @@ def ui_login(
     username, password = credentials
     login = LoginPage(page, base_url)
     login.open()
-    login.login(username=username, password=password, otp_secret=otp_secret)
+    login.login(
+        username=username,
+        password=password,
+        otp_secret=otp_secret,
+        otp_algorithm=settings.otp_algorithm,
+    )
     yield login
     login.logout()
 
@@ -265,8 +287,8 @@ def pytest_runtest_makereport(
             name="failure-url",
             attachment_type=allure.attachment_type.TEXT,
         )
-    except Exception:
-        pass
+    except Exception as exc:
+        get_logger("conftest").warning("failure_screenshot_failed", error=str(exc))
 
 
 @pytest.hookimpl(tryfirst=True, hookwrapper=True)

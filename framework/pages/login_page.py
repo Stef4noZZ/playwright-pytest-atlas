@@ -11,7 +11,7 @@ import time
 from playwright.sync_api import Locator, expect
 from playwright.sync_api import TimeoutError as PWTimeout
 
-from framework.auth.otp import generate_totp
+from framework.auth.otp import OTPAlgorithm, generate_totp, seconds_until_next_window
 from framework.pages.base_page import BasePage
 
 
@@ -24,7 +24,6 @@ class LoginPage(BasePage):
     submit_button_name = "Sign In"
 
     otp_max_attempts = 3
-    otp_window_sleep_seconds = 31
     otp_retry_sleep_seconds = 2
     otp_visibility_timeout_ms = 3_000
 
@@ -53,9 +52,10 @@ class LoginPage(BasePage):
         password: str,
         otp_secret: str | None = None,
         expect_success_url_contains: str | None = None,
+        otp_algorithm: OTPAlgorithm = "SHA1",
     ) -> None:
         """Run the full UI login flow with optional OTP handling."""
-        self.log.info("ui_login_start", username=username)
+        self.log.info("ui_login_start")
 
         self.username_input.fill(username)
         self.submit_button.click()
@@ -64,7 +64,7 @@ class LoginPage(BasePage):
         self.submit_button.click()
 
         if otp_secret:
-            self._handle_otp(otp_secret)
+            self._handle_otp(otp_secret, otp_algorithm)
 
         if expect_success_url_contains:
             self.page.wait_for_url(f"**{expect_success_url_contains}**")
@@ -81,15 +81,15 @@ class LoginPage(BasePage):
         except Exception as exc:
             self.log.warning("ui_logout_failed", error=str(exc))
 
-    def _handle_otp(self, otp_secret: str) -> None:
+    def _handle_otp(self, otp_secret: str, algorithm: OTPAlgorithm) -> None:
         if not self._is_otp_required():
             return
 
         for attempt in range(self.otp_max_attempts):
             if attempt > 0:
-                time.sleep(self.otp_window_sleep_seconds)
+                time.sleep(seconds_until_next_window())
 
-            code = generate_totp(otp_secret)
+            code = generate_totp(otp_secret, algorithm)
             self.otp_input.clear()
             self.otp_input.fill(code)
             self.submit_button.click()

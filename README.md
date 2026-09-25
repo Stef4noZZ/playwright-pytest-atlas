@@ -106,7 +106,7 @@ pytest -m smoke
 | Single test                           | `pytest tests/ui/test_example_ui.py::test_home_page_displays_get_started -v` |
 | Substring match on test names         | `pytest -k home`                                                       |
 | Parallel (auto-detect cores)          | `pytest -n auto`                                                       |
-| Switch browser one-off                | `pytest --browser=firefox -m ui`                                       |
+| Switch browser one-off                | `pytest --browser=firefox -m ui` (or set `QA_BROWSER` when `--browser` is omitted) |
 | Multiple browsers in one run          | `pytest --browser=chromium --browser=firefox`                          |
 
 ### Watching the browser (headed mode)
@@ -185,7 +185,7 @@ Common knobs:
 | `QA_ENVIRONMENT`             | `local`                              | `local` / `dev` / `staging` / `prod` |
 | `QA_BASE_URL`                | `https://playwright.dev`             | Base URL for UI tests                |
 | `QA_API_BASE_URL`            | `https://jsonplaceholder.typicode.com` | Base URL for API tests             |
-| `QA_BROWSER`                 | `chromium`                           | `chromium`, `firefox`, or `webkit`   |
+| `QA_BROWSER`                 | `chromium`                           | Used when `--browser` is not passed  |
 | `QA_HEADLESS`                | `true`                               | `false` to show the browser          |
 | `QA_SLOW_MO_MS`              | `0`                                  | Add latency between Playwright actions |
 | `QA_DEFAULT_TIMEOUT_MS`      | `30000`                              | Per-action timeout                   |
@@ -193,6 +193,7 @@ Common knobs:
 | `QA_RECORD_VIDEO`            | `false`                              | Record videos for every test         |
 | `QA_RECORD_TRACE`            | `retain-on-failure`                  | `off` / `on` / `retain-on-failure`   |
 | `QA_CAPTURE_SCREENSHOT`      | `only-on-failure`                    | `off` / `on` / `only-on-failure`     |
+| `QA_OTP_ALGORITHM`           | `SHA1`                               | `SHA1`, `SHA256`, or `SHA512`        |
 
 Auth-related variables (all optional) are documented in [.env.example](.env.example) and the [Authentication](#authentication) section below.
 
@@ -364,8 +365,9 @@ pre-commit run --all-files   # run all hooks on demand
 
 [.github/workflows/tests.yml](.github/workflows/tests.yml) runs on every push and pull request:
 
-- **`test` job**: matrix across Chromium / Firefox / WebKit on Python 3.11. Runs the smoke suite by default, in parallel via `pytest-xdist`, with one automatic retry on flake.
-- **`lint` job**: ruff check + ruff format check + mypy strict.
+- **`test` job**: matrix across Chromium / Firefox / WebKit on Python 3.11 and 3.13. Runs browser smoke tests (`smoke and not api`).
+- **`api` job**: API smoke tests once, outside the browser matrix.
+- **`lint` job**: ruff check + ruff format check + mypy strict + unit tests.
 
 Reports are uploaded as build artifacts (`reports-chromium-py3.11`, etc.) with 14-day retention.
 

@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import hashlib
 import importlib.util
+import time
 from typing import Literal
 
 OTPAlgorithm = Literal["SHA1", "SHA256", "SHA512"]
@@ -24,7 +25,13 @@ def is_otp_available() -> bool:
     return importlib.util.find_spec("pyotp") is not None
 
 
-def generate_totp(secret: str, algorithm: OTPAlgorithm = "SHA512") -> str:
+def seconds_until_next_window(period_seconds: int = 30, now: float | None = None) -> float:
+    """Seconds to sleep so the next TOTP attempt falls in a new time step."""
+    current = time.time() if now is None else now
+    return period_seconds - (current % period_seconds) + 1
+
+
+def generate_totp(secret: str, algorithm: OTPAlgorithm = "SHA1") -> str:
     """Return the current TOTP code for the given base32 secret."""
     if not is_otp_available():
         raise RuntimeError("pyotp is not installed. Install with: pip install -e '.[auth]'")

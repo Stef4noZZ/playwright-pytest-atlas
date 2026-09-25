@@ -13,14 +13,18 @@ from typing import Any
 
 from playwright.sync_api import APIRequestContext
 
-from framework.auth.otp import generate_totp, is_otp_available
+from framework.auth.otp import (
+    OTPAlgorithm,
+    generate_totp,
+    is_otp_available,
+    seconds_until_next_window,
+)
 from framework.auth.token_cache import Token, TokenCache
 from framework.utils.logger import get_logger
 
 
 class AuthClient:
     OTP_MAX_ATTEMPTS = 3
-    OTP_WINDOW_SLEEP_SECONDS = 31
 
     def __init__(
         self,
@@ -37,9 +41,17 @@ class AuthClient:
         self.cache = cache or TokenCache()
         self.log = get_logger(self.__class__.__name__)
 
-    def authenticate(self, username: str, password: str, otp_secret: str | None = None) -> Token:
+    def authenticate(
+        self,
+        username: str,
+        password: str,
+        otp_secret: str | None = None,
+        otp_algorithm: OTPAlgorithm = "SHA1",
+    ) -> Token:
         """Return a Token, using the cache when valid and OTP retries when required."""
-        return self.cache.get_or_fetch(lambda: self._fetch_token(username, password, otp_secret))
+        return self.cache.get_or_fetch(
+            lambda: self._fetch_token(username, password, otp_secret, otp_algorithm)
+        )
 
     def logout(self, token: Token, logout_url: str | None = None) -> None:
         """Best-effort logout. Pass the matching OIDC logout endpoint via `logout_url`."""
@@ -57,22 +69,30 @@ class AuthClient:
         finally:
             self.cache.clear()
 
-    def _fetch_token(self, username: str, password: str, otp_secret: str | None) -> Token:
+    def _fetch_token(
+        self,
+        username: str,
+        password: str,
+        otp_secret: str | None,
+        otp_algorithm: OTPAlgorithm,
+    ) -> Token:
         last_error: Exception | None = None
 
         for attempt in range(self.OTP_MAX_ATTEMPTS):
             if attempt > 0 and otp_secret:
-                time.sleep(self.OTP_WINDOW_SLEEP_SECONDS)
+                time.sleep(seconds_until_next_window())
 
-            payload = self._build_payload(username, password, otp_secret)
+            payload = self._build_payload(username, password, otp_secret, otp_algorithm)
             response = self.request.post(self.token_url, form=payload)
 
             if response.ok:
                 body: dict[str, Any] = response.json()
-                self.log.info("api_login_success", username=username)
+                self.log.info("api_login_success")
+                expires_in = body.get("expires_in")
                 return Token(
                     access_token=body["access_token"],
                     refresh_token=body.get("refresh_token"),
+                    expires_in=int(expires_in) if expires_in is not None else None,
                 )
 
             last_error = AssertionError(
@@ -86,7 +106,11 @@ class AuthClient:
         raise last_error or AssertionError("authentication failed")
 
     def _build_payload(
-        self, username: str, password: str, otp_secret: str | None
+        self,
+        username: str,
+        password: str,
+        otp_secret: str | None,
+        otp_algorithm: OTPAlgorithm,
     ) -> dict[str, str | float | bool]:
         payload: dict[str, str | float | bool] = {
             "username": username,
@@ -100,5 +124,5 @@ class AuthClient:
                     "OTP secret provided but pyotp is not installed. "
                     "Install with: pip install -e '.[auth]'"
                 )
-            payload["otp"] = generate_totp(otp_secret)
+            payload["otp"] = generate_totp(otp_secret, otp_algorithm)
         return payload

@@ -45,6 +45,7 @@ class Settings(BaseSettings):
     username: str | None = None
     password: SecretStr | None = None
     otp_secret: SecretStr | None = None
+    otp_algorithm: Literal["SHA1", "SHA256", "SHA512"] = "SHA1"
 
     # OAuth2 / OIDC. `auth_token_url` is the full token endpoint, e.g.
     # https://{host}/auth/realms/{realm}/protocol/openid-connect/token
